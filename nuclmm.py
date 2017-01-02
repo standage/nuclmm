@@ -1,9 +1,15 @@
 #!/usr/bin/env python
 from __future__ import print_function, division
 from collections import deque, defaultdict
+from itertools import chain
+import argparse
 import re
 import sys
 
+
+# -----------------------------------------------------------------------------
+# Utility functions
+# -----------------------------------------------------------------------------
 
 def parse_fasta(data):
     """Stolen shamelessly from http://stackoverflow.com/a/7655072/459780."""
@@ -32,6 +38,10 @@ def nuclpairs(sequence):
 def nucldict():
     return {n: 0 for n in 'ACGT'}
 
+
+# -----------------------------------------------------------------------------
+# Class definition
+# -----------------------------------------------------------------------------
 
 class NuclCompModel(object):
     """
@@ -66,15 +76,15 @@ class NuclCompModel(object):
         """
 
         self._record_initial_state(sequence)
-        for nucl, nextnucl in nuclpairs(sequence):
-            self._nuclstate.append(nucl)
-            if len(self._nuclstate) < self._order:
-                continue
-            state = ''.join([n for n in self._nuclstate])
-            self._transitions[state][nextnucl] += 1
-            self._nuclstate.popleft()
-
-        self._nuclstate = deque()  # Reset for next sequence
+        for subseq in re.split('[^ACGT]+', sequence):
+            for nucl, nextnucl in nuclpairs(subseq):
+                self._nuclstate.append(nucl)
+                if len(self._nuclstate) < self._order:
+                    continue
+                state = ''.join([n for n in self._nuclstate])
+                self._transitions[state][nextnucl] += 1
+                self._nuclstate.popleft()
+            self._nuclstate = deque()  # Reset for next sequence/subsequence
 
     def _record_initial_state(self, sequence):
         init = sequence[:self._order]
@@ -112,8 +122,48 @@ class NuclCompModel(object):
         return output
 
 
+# -----------------------------------------------------------------------------
+# Subcommand main methods
+# -----------------------------------------------------------------------------
+
+def train(args):
+    model = NuclCompModel(order=args.order)
+    for defline, sequence in parse_fasta(chain(*args.fasta)):
+        model.train(sequence)
+    print(model, file=args.out)
+
+
+# -----------------------------------------------------------------------------
+# Command-line interface
+# -----------------------------------------------------------------------------
+
+def train_parser(subparsers):
+    subparser = subparsers.add_parser('train')
+    subparser.add_argument('-o', '--out', type=argparse.FileType('w'),
+                           metavar='FILE', help='write output to FILE')
+    subparser.add_argument('-r', '--order', type=int, default=1, metavar='N',
+                           help='order of the Markov model (nucleotide length '
+                           'of the previous state); default is 1')
+    subparser.add_argument('fasta', type=argparse.FileType('r'), nargs='+',
+                           help='training sequence file(s) in Fasta format')
+
+
+def get_parser():
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest='cmd', metavar='cmd')
+    train_parser(subparsers)
+    return parser
+
+
+# -----------------------------------------------------------------------------
+# OS-level CLI, not invoked when the module is imported
+# -----------------------------------------------------------------------------
+
 if __name__ == '__main__':
-    smt = NuclCompModel(2)
-    for defline, sequence in parse_fasta(sys.stdin):
-        smt.train(sequence)
-    print(smt)
+    mains = {
+        'train': train,
+    }
+
+    args = get_parser().parse_args()
+    mainmethod = mains[args.cmd]
+    mainmethod(args)
