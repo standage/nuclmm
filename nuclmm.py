@@ -5,6 +5,7 @@ from itertools import chain
 import argparse
 import re
 import sys
+import pytest
 
 
 # -----------------------------------------------------------------------------
@@ -59,14 +60,13 @@ class NuclCompModel(object):
     Probabilities are computed by observing invoking the **consume** command on
     one or more training sequences.
     """
-    _initial_states = defaultdict(int)
-    _transitions = defaultdict(nucldict)
-    _nuclstate = deque()
-    _order = int()
 
     def __init__(self, order=1):
         assert order > 0
-        self._order = order
+        self._initial_states = defaultdict(int)
+        self._transitions = defaultdict(nucldict)
+        self._nuclstate = deque()
+        self._order = int(order)
 
     def train(self, sequence):
         """
@@ -76,7 +76,7 @@ class NuclCompModel(object):
         """
 
         self._record_initial_state(sequence)
-        for subseq in re.split('[^ACGT]+', sequence):
+        for subseq in re.split('[^ACGT]+', sequence.upper()):
             for nucl, nextnucl in nuclpairs(subseq):
                 self._nuclstate.append(nucl)
                 if len(self._nuclstate) < self._order:
@@ -94,6 +94,10 @@ class NuclCompModel(object):
             print(message, file=sys.stderr)
         else:
             self._initial_states[init] += 1
+
+    @property
+    def order(self):
+        return self._order
 
     @property
     def initial_probs(self):
@@ -153,6 +157,48 @@ def get_parser():
     subparsers = parser.add_subparsers(dest='cmd', metavar='cmd')
     train_parser(subparsers)
     return parser
+
+
+# -----------------------------------------------------------------------------
+# Tests
+# -----------------------------------------------------------------------------
+
+def test_basic():
+    model = NuclCompModel(order=1)
+    assert model.order == 1
+
+    with pytest.raises(AssertionError) as ae:
+        model = NuclCompModel(order=0)
+
+    with pytest.raises(AssertionError) as ae:
+        model = NuclCompModel(order=-1)
+
+    model = NuclCompModel(order=3)
+    assert str(model) == 'State,Next,Prob'
+
+
+def test_train():
+    model = NuclCompModel(order=2)
+    model.train('AAATAAATAAAT')
+    assert sorted(model._transitions.keys()) == ['AA', 'AT', 'TA']
+    assert list(model._initial_states.keys()) == ['AA']
+
+
+def test_init_probs():
+    model = NuclCompModel(order=2)
+    model.train('AAATAAATAAAT')
+    state, prob = next(model.initial_probs)
+    assert state == 'AA'
+    assert prob == 1.0
+
+
+def test_trans_probs():
+    model = NuclCompModel(order=2)
+    model.train('AAATAAATAAAT')
+    for state, nextnucl, prob in model.transition_probs:
+        if state == 'AA' and nextnucl in ['A', 'T']:
+            assert prob == 0.5, (state, nextnucl, prob)
+
 
 
 # -----------------------------------------------------------------------------
