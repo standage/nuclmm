@@ -74,7 +74,6 @@ class NuclCompModel(object):
 
         :param sequence: string-like object containing a nucleotide sequence
         """
-
         self._record_initial_state(sequence)
         for subseq in re.split('[^ACGT]+', sequence.upper()):
             for nucl, nextnucl in nuclpairs(subseq):
@@ -85,6 +84,20 @@ class NuclCompModel(object):
                 self._transitions[state][nextnucl] += 1
                 self._nuclstate.popleft()
             self._nuclstate = deque()  # Reset for next sequence/subsequence
+
+    def load(self, instream, num_header_lines=1):
+        for _ in range(num_header_lines):
+            _ = next(instream)
+        for line in instream:
+            if line.strip() == '':
+                continue
+            state, nextnucl, prob = line.strip().split(',')
+            assert len(state) == self.order
+            prob = float(prob)
+            if nextnucl == '':
+                self._initial_states[state] = prob
+            else:
+                self._transitions[state][nextnucl] = prob
 
     def _record_initial_state(self, sequence):
         init = sequence[:self._order]
@@ -199,6 +212,68 @@ def test_trans_probs():
         if state == 'AA' and nextnucl in ['A', 'T']:
             assert prob == 0.5, (state, nextnucl, prob)
 
+
+def test_load():
+    model = NuclCompModel(order=3)
+    model_str = (
+        'State,Next,Prob\n'
+        'AAA,,1.0000\n'
+        'AAA,A,0.0000\n'
+        'AAA,C,0.0000\n'
+        'AAA,G,0.0000\n'
+        'AAA,T,1.0000\n'
+        'AAT,A,1.0000\n'
+        'AAT,C,0.0000\n'
+        'AAT,G,0.0000\n'
+        'AAT,T,0.0000\n'
+        'ATA,A,1.0000\n'
+        'ATA,C,0.0000\n'
+        'ATA,G,0.0000\n'
+        'ATA,T,0.0000\n'
+        'TAA,A,1.0000\n'
+        'TAA,C,0.0000\n'
+        'TAA,G,0.0000\n'
+        'TAA,T,0.0000\n'
+    )
+    model.load(iter(model_str.split('\n')))
+    assert sorted(model._initial_states.keys()) == ['AAA']
+    assert sorted(model._transitions.keys()) == ['AAA', 'AAT', 'ATA', 'TAA']
+
+
+def test_load_headers():
+    model = NuclCompModel(order=5)
+    model_str = (
+        'State,Next,Prob\n'
+        'State,Next,Prob\n'
+        'AAAAA,A,0.1000\n'
+        'AAAAA,C,0.2000\n'
+        'AAAAA,G,0.3000\n'
+        'AAAAA,T,0.4000\n'
+    )
+    model.load(iter(model_str.split('\n')), num_header_lines=2)
+    assert sorted(model._transitions.keys()) == ['AAAAA']
+
+    model_str = (
+        'AAAAA,A,0.1000\n'
+        'AAAAA,C,0.2000\n'
+        'AAAAA,G,0.3000\n'
+        'AAAAA,T,0.4000\n'
+    )
+    model.load(iter(model_str.split('\n')), num_header_lines=0)
+    assert sorted(model._transitions.keys()) == ['AAAAA']
+
+
+def test_order():
+    model = NuclCompModel(order=3)
+    model_str = (
+        'State,Next,Prob\n'
+        'AA,A,0.25\n'
+        'AA,C,0.25\n'
+        'AA,G,0.25\n'
+        'AA,T,0.25\n'
+    )
+    with pytest.raises(AssertionError) as ae:
+        model.load(iter(model_str.split('\n')))
 
 
 # -----------------------------------------------------------------------------
