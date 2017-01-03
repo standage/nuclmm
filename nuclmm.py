@@ -74,6 +74,7 @@ class NuclCompModel(object):
 
     def __init__(self, order=1):
         assert order > 0
+        self._normed = False
         self._initial_states = defaultdict(int)
         self._transitions = defaultdict(nucldict)
         self._nuclstate = deque()
@@ -85,6 +86,7 @@ class NuclCompModel(object):
 
         :param sequence: string-like object containing a nucleotide sequence
         """
+        self._normed = False
         self._record_initial_state(sequence)
         for subseq in re.split('[^ACGT]+', sequence.upper()):
             for nucl, nextnucl in nuclpairs(subseq):
@@ -108,6 +110,7 @@ class NuclCompModel(object):
                 self._initial_states[state] = prob
             else:
                 self._transitions[state][nextnucl] = prob
+        self._normed = True
 
     def simulate(self, numseqs, seqlen, ignore_inits=False):
         for _ in range(numseqs):
@@ -123,6 +126,30 @@ class NuclCompModel(object):
                 self._nuclstate.append(nextnucl)
                 self._nuclstate.popleft()
             yield ''.join([n for n in seq])
+
+    def normalize(self):
+        if self._normed:
+            return
+
+        probs = dict()
+        norm = sum(self._initial_states.values())
+        for initseq in self._initial_states:
+            count = self._initial_states[initseq]
+            prob = count / norm
+            probs[initseq] = prob
+        self._initial_states = probs
+
+        probs = defaultdict(nucldict)
+        for stateseq in self._transitions:
+            counts = self._transitions[stateseq]
+            norm = sum(counts.values())
+            for nextnucl in sorted(counts):
+                count = counts[nextnucl]
+                prob = count / norm
+                probs[stateseq][nextnucl] = prob
+        self._transitions = probs
+
+        self._normed = True
 
     def _record_initial_state(self, sequence):
         init = sequence[:self._order]
@@ -143,20 +170,18 @@ class NuclCompModel(object):
 
     @property
     def initial_probs(self):
-        norm = sum(self._initial_states.values())
+        self.normalize()
         for initseq in sorted(self._initial_states):
-            count = self._initial_states[initseq]
-            prob = count / norm
+            prob = self._initial_states[initseq]
             yield initseq, prob
 
     @property
     def transition_probs(self):
+        self.normalize()
         for stateseq in sorted(self._transitions):
-            counts = self._transitions[stateseq]
-            norm = sum(counts.values())
-            for nextnucl in sorted(counts):
-                count = counts[nextnucl]
-                prob = count / norm
+            probs = self._transitions[stateseq]
+            for nextnucl in sorted(probs):
+                prob = probs[nextnucl]
                 yield stateseq, nextnucl, prob
 
     def __str__(self):
