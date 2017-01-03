@@ -3,6 +3,7 @@ from __future__ import print_function, division
 from collections import deque, defaultdict
 from itertools import chain
 import argparse
+import random
 import re
 import sys
 import pytest
@@ -38,6 +39,16 @@ def nuclpairs(sequence):
 
 def nucldict():
     return {n: 0 for n in 'ACGT'}
+
+
+def draw(dist):
+    rn = random.random()
+    test = 0.0
+    for key in sorted(dist.keys()):
+        test += dist[key]
+        if rn < test:
+            return key
+    return key
 
 
 # -----------------------------------------------------------------------------
@@ -80,8 +91,7 @@ class NuclCompModel(object):
                 self._nuclstate.append(nucl)
                 if len(self._nuclstate) < self._order:
                     continue
-                state = ''.join([n for n in self._nuclstate])
-                self._transitions[state][nextnucl] += 1
+                self._transitions[self.state][nextnucl] += 1
                 self._nuclstate.popleft()
             self._nuclstate = deque()  # Reset for next sequence/subsequence
 
@@ -99,6 +109,21 @@ class NuclCompModel(object):
             else:
                 self._transitions[state][nextnucl] = prob
 
+    def simulate(self, numseqs, seqlen, ignore_inits=False):
+        for _ in range(numseqs):
+            seq = deque()
+            self._nuclstate = deque()
+            initseq = draw(self._initial_states)
+            for n in initseq:
+                self._nuclstate.append(n)
+                seq.append(n)
+            while len(seq) < seqlen:
+                nextnucl = draw(self._transitions[self.state])
+                seq.append(nextnucl)
+                self._nuclstate.append(nextnucl)
+                self._nuclstate.popleft()
+            yield ''.join([n for n in seq])
+
     def _record_initial_state(self, sequence):
         init = sequence[:self._order]
         if re.search('[^ACGT]', init):
@@ -107,6 +132,10 @@ class NuclCompModel(object):
             print(message, file=sys.stderr)
         else:
             self._initial_states[init] += 1
+
+    @property
+    def state(self):
+        return ''.join([n for n in self._nuclstate])
 
     @property
     def order(self):
@@ -150,6 +179,15 @@ def train(args):
     print(model, file=args.out)
 
 
+def simulate(args):
+    if args.seed:
+        random.seed(args.seed)
+    model = NuclCompModel(order=args.order)
+    model.load(args.modelfile)
+    for i, sequence in enumerate(model.simulate(args.numseqs, args.seqlen)):
+        print('>seq', i, '\n', sequence, sep='', file=args.out)
+
+
 # -----------------------------------------------------------------------------
 # Command-line interface
 # -----------------------------------------------------------------------------
@@ -165,10 +203,28 @@ def train_parser(subparsers):
                            help='training sequence file(s) in Fasta format')
 
 
+def simulate_parser(subparsers):
+    subparser = subparsers.add_parser('simulate')
+    subparser.add_argument('-o', '--out', type=argparse.FileType('w'),
+                           metavar='FILE', help='write output to FILE')
+    subparser.add_argument('-r', '--order', type=int, default=1, metavar='N',
+                           help='order of the Markov model (nucleotide length '
+                           'of the previous state); default is 1')
+    subparser.add_argument('-n', '--numseqs', type=int, metavar='N',
+                           default=1000, help='number of sequences to produce;'
+                           ' default is 1000')
+    subparser.add_argument('-l', '--seqlen', type=int, metavar='L',
+                           default=100, help='sequence length; default is 100')
+    subparser.add_argument('-s', '--seed', type=int, metavar='S',
+                           help='seed for random number generator')
+    subparser.add_argument('modelfile', type=argparse.FileType('r'))
+
+
 def get_parser():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='cmd', metavar='cmd')
     train_parser(subparsers)
+    simulate_parser(subparsers)
     return parser
 
 
@@ -283,6 +339,7 @@ def test_order():
 if __name__ == '__main__':
     mains = {
         'train': train,
+        'simulate': simulate,
     }
 
     args = get_parser().parse_args()
