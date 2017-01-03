@@ -2,6 +2,10 @@
 from __future__ import print_function, division
 from collections import deque, defaultdict
 from itertools import chain
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 import argparse
 import random
 import re
@@ -280,7 +284,9 @@ def test_train():
 
 def test_init_probs():
     model = NuclCompModel(order=2)
-    model.train('AAATAAATAAAT')
+    with open('aaat.fa', 'r') as infile:
+        for defline, sequence in parse_fasta(infile):
+            model.train(sequence)
     state, prob = next(model.initial_probs)
     assert state == 'AA'
     assert prob == 1.0
@@ -296,27 +302,8 @@ def test_trans_probs():
 
 def test_load():
     model = NuclCompModel(order=3)
-    model_str = (
-        'State,Next,Prob\n'
-        'AAA,,1.0000\n'
-        'AAA,A,0.0000\n'
-        'AAA,C,0.0000\n'
-        'AAA,G,0.0000\n'
-        'AAA,T,1.0000\n'
-        'AAT,A,1.0000\n'
-        'AAT,C,0.0000\n'
-        'AAT,G,0.0000\n'
-        'AAT,T,0.0000\n'
-        'ATA,A,1.0000\n'
-        'ATA,C,0.0000\n'
-        'ATA,G,0.0000\n'
-        'ATA,T,0.0000\n'
-        'TAA,A,1.0000\n'
-        'TAA,C,0.0000\n'
-        'TAA,G,0.0000\n'
-        'TAA,T,0.0000\n'
-    )
-    model.load(iter(model_str.split('\n')))
+    with open('aaat.mm', 'r') as infile:
+        model.load(infile)
     assert sorted(model._initial_states.keys()) == ['AAA']
     assert sorted(model._transitions.keys()) == ['AAA', 'AAT', 'ATA', 'TAA']
 
@@ -344,7 +331,7 @@ def test_load_headers():
     assert sorted(model._transitions.keys()) == ['AAAAA']
 
 
-def test_order():
+def test_order_mismatch():
     model = NuclCompModel(order=3)
     model_str = (
         'State,Next,Prob\n'
@@ -355,6 +342,35 @@ def test_order():
     )
     with pytest.raises(AssertionError) as ae:
         model.load(iter(model_str.split('\n')))
+
+
+def test_train_cli():
+    with open('aaat.fa', 'r') as seqfile, open('aaat.mm', 'r') as modelfile:
+        args = type('', (), {})()
+        args.out = StringIO()
+        args.order = 3
+        args.fasta = [seqfile]
+        train(args)
+
+        model = modelfile.read().strip()
+        modeltest = args.out.getvalue().strip()
+        assert modeltest == model
+
+
+def test_simulate_cli():
+    with open('aaat.mm', 'r') as mfile, open('aaat-pass2.fa', 'r') as seqfile:
+        args = type('', (), {})()
+        args.out = StringIO()
+        args.order = 3
+        args.numseqs = 5
+        args.seqlen = 50
+        args.seed = 42
+        args.modelfile = mfile
+        simulate(args)
+
+        seqs = seqfile.read().strip()
+        seqstest = args.out.getvalue().strip()
+        assert seqstest == seqs
 
 
 # -----------------------------------------------------------------------------
