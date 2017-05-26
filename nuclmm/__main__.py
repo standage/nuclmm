@@ -13,6 +13,6 @@ def main():
         'simulate': nuclmm.simulate.main,
     }
 
-    args = nuclmm.cli.get_parser().parse_args()
+    args = nuclmm.cli_parser().parse_args()
     mainmethod = mains[args.cmd]
     mainmethod(args)

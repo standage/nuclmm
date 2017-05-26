@@ -9,10 +9,10 @@ try:
     import __builtin__ as builtins
 except:  # pragma: no cover
     import builtins
+import argparse
 import pkg_resources
 from nuclmm import train
 from nuclmm import simulate
-from nuclmm import cli
 from nuclmm.markovchain import MarkovChain
 
 
@@ -52,3 +52,20 @@ def parse_fasta(data):
             seq.append(line)
     if name:
         yield (name, ''.join(seq))
+
+
+def cli_parser():
+    desc = ('Use arbitrary-order Markov chains to model nucleotide composition'
+            ' and simulate random sequences.')
+    parser = argparse.ArgumentParser(description=desc)
+    parser.add_argument('-v', '--version', action='version',
+                        version='nuclmm v{}'.format(__version__))
+    parser._positionals.title = 'Subcommands'
+    parser._optionals.title = 'Global arguments'
+
+    subcommandstr = '", "'.join(['train, simulate'])
+    subparsers = parser.add_subparsers(dest='cmd', metavar='cmd',
+                                       help=subcommandstr)
+    train.subparser(subparsers)
+    simulate.subparser(subparsers)
+    return parser
