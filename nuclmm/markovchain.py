@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+#
+# -----------------------------------------------------------------------------
+# Copyright (c) 2017 The Regents of the University of California
+#
+# This file is part of nuclmm (http://github.com/standage/nuclmm) and is
+# licensed under the MIT license: see LICENSE.
+# -----------------------------------------------------------------------------
 
 """Nth order Markov chain as a model of nucleotide composition."""
 

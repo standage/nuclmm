@@ -1,9 +1,24 @@
+# -----------------------------------------------------------------------------
+# Copyright (c) 2017 The Regents of the University of California
+#
+# This file is part of nuclmm (http://github.com/standage/nuclmm) and is
+# licensed under the MIT license: see LICENSE.
+# -----------------------------------------------------------------------------
+
 try:
     import __builtin__ as builtins
 except:  # pragma: no cover
     import builtins
 import pkg_resources
+from nuclmm import train
+from nuclmm import simulate
+from nuclmm import cli
 from nuclmm.markovchain import MarkovChain
+
+
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
 
 
 def open(filename, mode):
