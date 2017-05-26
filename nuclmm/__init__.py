@@ -10,7 +10,9 @@ try:
 except:  # pragma: no cover
     import builtins
 import argparse
+from gzip import open as gzopen
 import pkg_resources
+import sys
 from nuclmm import train
 from nuclmm import simulate
 from nuclmm.markovchain import MarkovChain

@@ -1,4 +1,10 @@
-#!/usr/bin/env python
+# -----------------------------------------------------------------------------
+# Copyright (c) 2017 The Regents of the University of California
+#
+# This file is part of nuclmm (http://github.com/standage/nuclmm) and is
+# licensed under the MIT license: see LICENSE.
+# -----------------------------------------------------------------------------
+
 from __future__ import print_function, division
 import nuclmm
 from nuclmm import (parse_fasta, data_file)

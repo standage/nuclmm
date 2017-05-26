@@ -17,13 +17,14 @@ def subparser(subparsers):
     subparser.add_argument('-r', '--order', type=int, default=1, metavar='N',
                            help='order of the Markov model (nucleotide length '
                            'of the previous state); default is 1')
-    subparser.add_argument('fasta', type=argparse.FileType('r'), nargs='+',
+    subparser.add_argument('fasta', nargs='+',
                            help='training sequence file(s) in Fasta format')
 
 
 def main(args):
+    fastas = [nuclmm.open(f, 'r') for f in args.fasta]
     model = nuclmm.MarkovChain(order=args.order)
-    for defline, sequence in nuclmm.parse_fasta(chain(*args.fasta)):
+    for defline, sequence in nuclmm.parse_fasta(chain(*fastas)):
         model.train(sequence)
     model.normalize()
     print(model, file=args.out)
