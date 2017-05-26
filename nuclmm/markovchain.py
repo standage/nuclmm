@@ -43,6 +43,14 @@ def nucldict():
     return {n: 0 for n in 'ACGT'}
 
 
+class MarkovChainOrderMismatch(ValueError):
+    pass
+
+
+class MarkovChainNormalizationError(ValueError):
+    pass
+
+
 class MarkovChain(object):
     """
     Class for training models of nucleotide composition.
@@ -74,10 +82,14 @@ class MarkovChain(object):
         return json.dumps([self._initial_states, self._transitions], indent=4)
 
     def __eq__(self, other):
+        if self.order != other.order:
+            return False
         if list(self._transitions) != list(other._transitions):
             return False
         for state in self._transitions:
-            for nucl in ['ACGT']:
+            if state not in other._transitions:
+                return False
+            for nucl in 'ACGT':
                 selfprob = self._transitions[state][nucl]
                 otherprob = other._transitions[state][nucl]
                 if abs(selfprob - otherprob) > 0.0001:
@@ -112,6 +124,29 @@ class MarkovChain(object):
         self._initial_states = data[0]
         self._transitions = data[1]
         self._normed = True
+        self.validate()
+
+    def validate(self):
+        allinits = 0.0
+        for state, prob in self.initial_probs:
+            if len(state) != self.order:
+                message = 'state has length {:d} '.format(len(state))
+                message += 'but model declared {:d}-order'.format(self.order)
+                raise MarkovChainOrderMismatch(message)
+            allinits += prob
+        if abs(allinits - 1.0) > 0.0001:
+            message = 'initial state probabilites should sum to 1.0'
+            message += '; got {:.4f}'.format(allinits)
+            raise MarkovChainNormalizationError(message)
+
+        for state in self._transitions:
+            probsum = 0.0
+            for nextnucl in self._transitions[state]:
+                probsum += self._transitions[state][nextnucl]
+            if abs(probsum - 1.0) > 0.0001:
+                message = 'state transition probabilities for {}'.format(state)
+                message += ' should sum to 1.0; got {:.4f}'.format(probsum)
+                raise MarkovChainNormalizationError(message)
 
     def random_init(self):
         """Generate a random initial state sequence."""
