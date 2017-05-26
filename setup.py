@@ -24,7 +24,7 @@ setup(name='nuclmm',
       license='MIT',
       packages=['nuclmm', 'nuclmm.tests'],
       package_data={
-          'nuclmm': ['nuclmm/nuclmm/data/*']
+          'nuclmm': ['nuclmm/tests/data/*']
       },
       entry_points={'console_scripts': ['nuclmm = nuclmm.__main__:main']},
       classifiers=[
