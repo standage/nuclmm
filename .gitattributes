@@ -1,1 +1,2 @@
 nuclmm/_version.py export-subst
+nuclmm/tests/data/* linguist-documentation
