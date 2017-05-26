@@ -26,6 +26,7 @@ setup(name='nuclmm',
       package_data={
           'nuclmm': ['nuclmm/tests/data/*']
       },
+      include_package_data=True,
       entry_points={'console_scripts': ['nuclmm = nuclmm.__main__:main']},
       classifiers=[
           'Development Status :: 4 - Beta',
