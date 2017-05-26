@@ -1,8 +1,8 @@
 test:
-	py.test -v --cov=nuclmm.py --cov-report term-missing nuclmm.py
+	pytest -v --cov=nuclmm --cov-report term-missing nuclmm/*.py nuclmm/tests/*.py
 
-pep8:
-	pep8 nuclmm.py
+style:
+	pep8 nuclmm/*.py nuclmm/tests/*.py
 
 clean:
 	rm -rf __pycache__/
