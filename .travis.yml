@@ -1,6 +1,10 @@
 language: python
 python: 3.6
 dist: trusty
+addons:
+    apt:
+        packages:
+            - cloc
 branches:
   only:
     - master
@@ -12,3 +16,5 @@ install:
     - pip install tox pytest pytest-cov
 script:
     tox -e $TOX_ENV
+after_success:
+    - make loc
