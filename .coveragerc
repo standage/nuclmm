@@ -1,0 +1,6 @@
+[report]
+show_missing = True
+
+[run]
+branch = True
+omit = nuclmm/_version.py, nuclmm/tests/*.py
