@@ -121,6 +121,18 @@ def test_load():
     assert sorted(model._transitions.keys()) == ['AAA', 'AAT', 'ATA', 'TAA']
 
 
+def test_open():
+    model = MarkovChain(order=3)
+    infile = data_file('aaat.mm')
+    model.open(infile)
+
+    testmodel = MarkovChain(order=3)
+    with nuclmm.open(infile, 'r') as infile:
+        testmodel.load(infile)
+
+    assert model == testmodel
+
+
 def test_save():
     model = MarkovChain(order=3)
     model.train('AAATAAATAAAT')

@@ -15,6 +15,7 @@ import json
 import random
 import re
 import sys
+import nuclmm
 
 
 def draw(dist):
@@ -131,6 +132,11 @@ class MarkovChain(object):
         self._transitions = data[1]
         self._normed = True
         self.validate()
+
+    def open(self, infilename):
+        """Load the Markov chain from a JSON file."""
+        with nuclmm.open(infilename, 'r') as instream:
+            self.load(instream)
 
     def validate(self):
         allinits = 0.0
