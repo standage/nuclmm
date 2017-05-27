@@ -9,7 +9,7 @@ from __future__ import print_function, division
 import nuclmm
 from nuclmm import (parse_fasta, data_file)
 from nuclmm.markovchain import (MarkovChain, MarkovChainOrderMismatch,
-                                MarkovChainNormalizationError)
+                                MarkovChainNormalizationError, draw, nuclpairs)
 import pytest
 
 
@@ -25,6 +25,16 @@ def test_basic():
 
     model = MarkovChain(order=3)
     assert str(model) == '[\n    {},\n    {}\n]'
+
+
+def test_draw():
+    assert draw({}) is None
+
+
+def test_nucl_pairs():
+    assert list(nuclpairs('A')) == list()
+    assert list(nuclpairs('ACGTTTT')) == [('A', 'C'), ('C', 'G'), ('G', 'T'),
+                                          ('T', 'T'), ('T', 'T'), ('T', 'T')]
 
 
 def test_train():
@@ -51,6 +61,27 @@ def test_equality():
 
     assert model1 == model2
     assert model1 != model3
+
+
+def test_inequality():
+    infile1 = nuclmm.open(data_file('bogus.order2.mm'), 'r')
+    infile2 = nuclmm.open(data_file('bogus.order2.difftrans.mm'), 'r')
+    infile3 = nuclmm.open(data_file('bogus.order2.diffprob.mm'), 'r')
+    infile4 = nuclmm.open(data_file('bogus.order5.mm'), 'r')
+
+    model1 = MarkovChain(order=2)
+    model2 = MarkovChain(order=2)
+    model3 = MarkovChain(order=2)
+    model4 = MarkovChain(order=5)
+
+    model1.load(infile1)
+    model2.load(infile2)
+    model3.load(infile3)
+    model4.load(infile4)
+
+    assert model1 != model2
+    assert model1 != model3
+    assert model1 != model4
 
 
 def test_init_probs():

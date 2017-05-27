@@ -38,7 +38,7 @@ def draw(dist):
 def nuclpairs(sequence):
     """Generator yielding overlapping pairs of nucleotides from a sequence."""
     if len(sequence) < 2:
-        return None
+        return
     prev = sequence[0]
     for nucl in sequence[1:]:
         yield prev, nucl
