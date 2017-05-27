@@ -3,3 +3,6 @@ scratch/
 .coverage
 .cache/
 __pycache__/
+*.pyc
+.tox/
+*.egg-info/
