@@ -6,11 +6,12 @@
 # -----------------------------------------------------------------------------
 
 from __future__ import print_function, division
+from io import StringIO
+import pytest
 import nuclmm
 from nuclmm import (parse_fasta, data_file)
 from nuclmm.markovchain import (MarkovChain, MarkovChainOrderMismatch,
                                 MarkovChainNormalizationError, draw, nuclpairs)
-import pytest
 
 
 def test_basic():
@@ -42,6 +43,14 @@ def test_train():
     model.train('AAATAAATAAAT')
     assert sorted(model._transitions) == ['AA', 'AT', 'TA']
     assert list(model._initial_states) == ['AA']
+
+    model = MarkovChain(order=6)
+    model.train('TNTAAAGGGGCTTTCGAGTGTGATCAAACGGCTCCAAACCCACTAAACAAAATACGCTCTG'
+                'TATTGGGCCCAAAGATTTCGCGTGTTGATCGACGGGCGATCCGTTCGCACGCA')
+
+    model = MarkovChain(order=6)
+    model.train('TCTAAAGGGGCTTTCGAGTGTGATCAAACGGCTCCAAACCCACTAAACAAAATACGCTCTG'
+                'TATTGGGCCCAAAGATTTCGCGTNTTGATCGACGGGCGATCCGTTCGCACGCA')
 
 
 def test_equality():
@@ -112,6 +121,22 @@ def test_load():
     assert sorted(model._transitions.keys()) == ['AAA', 'AAT', 'ATA', 'TAA']
 
 
+def test_save():
+    model = MarkovChain(order=3)
+    model.train('AAATAAATAAAT')
+    iostream = StringIO()
+    model.save(iostream)
+
+    iostream.seek(0)
+    loadmodel = MarkovChain(order=3)
+    loadmodel.load(iostream)
+
+    testmodel = MarkovChain(order=3)
+    testmodel.load(nuclmm.open(data_file('aaat.mm'), 'r'))
+
+    assert loadmodel == testmodel
+
+
 def test_order_mismatch():
     model = MarkovChain(order=2)
     infile = data_file('aaat.mm')
@@ -137,3 +162,14 @@ def test_state_trans_norm():
         with nuclmm.open(infile, 'r') as infile:
             model.load(infile)
     assert 'transition probabilities for TGAA should sum to 1.0' in str(mvne)
+
+
+def test_simulate():
+    model = MarkovChain(order=5)
+    with nuclmm.open(data_file('bogus.order5.mm'), 'r') as infile:
+        model.load(infile)
+
+    seqs = [s for s in model.simulate(100, 100, ignore_inits=True)]
+    assert len(seqs) == 100
+    for seq in seqs:
+        assert len(seq) == 100

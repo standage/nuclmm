@@ -94,8 +94,6 @@ class MarkovChain(object):
         if set(list(self._transitions)) != set(list(other._transitions)):
             return False
         for state in self._transitions:
-            if state not in other._transitions:
-                return False
             for nucl in 'ACGT':
                 selfprob = self._transitions[state][nucl]
                 otherprob = other._transitions[state][nucl]
@@ -122,6 +120,7 @@ class MarkovChain(object):
 
     def save(self, outstream):
         """Save the Markov chain to a file, in JSON format."""
+        self.normalize()
         print(self, file=outstream)
 
     def load(self, instream):
@@ -157,7 +156,7 @@ class MarkovChain(object):
 
     def random_init(self):
         """Generate a random initial state sequence."""
-        return ''.join(random.choice('ACGT') for _ in range(self.order))
+        return random.choice(list(self._transitions))
 
     def simulate(self, numseqs, seqlen, ignore_inits=False):
         """Simulate a sequence from the Markov chain."""
